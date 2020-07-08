@@ -57,11 +57,11 @@ int fih_writeout(void *data, size_t len, void *extra) {
   
 }
 
-int sendack_restart(fih_state *fh) {
+int sendack_restart(int out_fd, fih_state *fh) {
 
   ssize_t bytes_written;
   
-  bytes_written = sendack(fh->fd, 0x100);
+  bytes_written = sendack(out_fd, 0x100);
   if (bytes_written != sizeof(uint64_t)) {
     fprintf(stderr, "%s: Trouble with call to sendack.\n", __FUNCTION__);
     perror("write");

@@ -187,6 +187,7 @@ int main(int argc, char *argv[]) {
 
     memset(&fh, 0, sizeof(fih_state));
     fh.fd = in_fd;
+    fh.out_fd = out_fd;
     fh.xres = input_xres;
     fh.yres = (input_yres >> 1);
     fh.len.req_bytes = 8;
@@ -252,7 +253,7 @@ int main(int argc, char *argv[]) {
 	  return -1;
 	}
 
-	retval = sendack_restart(&fh);
+	retval = sendack_restart(fh.out_fd, &fh);
 	if (retval == -1) {
 	  fprintf(stderr, "%s: Trouble sending an ack and restart. fih1\n", __FUNCTION__);
 	}

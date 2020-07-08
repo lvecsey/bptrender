@@ -330,6 +330,7 @@ int main(int argc, char *argv[]) {
     
     memset(&fih1, 0, sizeof(fih_state));
     fih1.fd = sock1;
+    fih1.out_fd = fih1.fd;
     fih1.len.req_bytes = 8;
     fih1.len.data = malloc(fih1.len.req_bytes);
     if (fih1.len.data == NULL) {
@@ -387,6 +388,7 @@ int main(int argc, char *argv[]) {
 
     memset(&fih2, 0, sizeof(fih_state));
     fih2.fd = sock2;
+    fih2.out_fd = fih2.fd;
     fih2.xres = xres;
     fih2.yres = yres;
     fih2.len.req_bytes = 8;
@@ -497,12 +499,12 @@ int main(int argc, char *argv[]) {
 	      image_splices[0] = 0;
 	      image_splices[1] = 0;
 
-	      retval = sendack_restart(&fih1);
+	      retval = sendack_restart(fih1.out_fd, &fih1);
 	      if (retval == -1) {
 		fprintf(stderr, "%s: Trouble sending an ack and restart. fih1\n", __FUNCTION__);
 	      }
 
-	      retval = sendack_restart(&fih2);	      
+	      retval = sendack_restart(fih2.out_fd, &fih2);
 	      if (retval == -1) {
 		fprintf(stderr, "%s: Trouble sending an ack and restart. fih2\n", __FUNCTION__);
 	      }

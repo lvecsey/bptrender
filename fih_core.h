@@ -28,6 +28,8 @@ enum { FILLING_LEN, FILLING_IMG };
 typedef struct {
 
   int fd;
+
+  int out_fd;
   
   fillpack len, compressed_drgb;
 
@@ -54,6 +56,6 @@ int fih_writeout(void *data, size_t len, void *extra);
 
 int fih_core(fih_state *fh, int flags, long int *results);
 
-int sendack_restart(fih_state *fh);
+int sendack_restart(int out_fd, fih_state *fh);
 
 #endif
