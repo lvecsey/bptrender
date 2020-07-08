@@ -71,15 +71,11 @@ int main(int argc, char *argv[]) {
 
   int out_fd;
 
-  uint64_t len;
-
   char *imghalf_fn;
 
   int imghalf_fd;
 
   long int localport;
-
-  long int num_iters;
 
   void *compressed_rgb;
 
@@ -121,26 +117,17 @@ int main(int argc, char *argv[]) {
   
   {
 
-    ssize_t bytes_read;
     ssize_t bytes_written;
-
-    size_t fsize;
 
     mode_t mode;
 
     void *mem;
-
-    int retval;
 
     char *env_PROTO;
 
     char *env_TCPLOCALPORT;
 
     fih_state fh;
-
-    long int xres, yres;
-
-    long int image_splices = 0;
 
     long int results;
     
