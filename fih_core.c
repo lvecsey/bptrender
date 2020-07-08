@@ -211,6 +211,9 @@ int fih_core(fih_state *fh, int flags, long int *results) {
 	if (retval == -1) {
 	  fprintf(stderr, "%s: Trouble calling output_func.\n", __FUNCTION__);
 	  bytes_written = sendack(fh->fd, 0xFA);
+	  if (bytes_written == -1) {
+	    fprintf(stderr, "%s: Failure to sendack to remote endpoint.\n", __FUNCTION__);
+	  }
 	  return -1;
 	}
 	
