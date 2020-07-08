@@ -4,10 +4,10 @@ Create a 3D point based image, in this case using two servers and 8 cores each.
 Each server has 48GB of memory, and will keep the point data in memory.
 So we can actually have 1.5 billion points in memory.
 
-This release depends on Linux epoll, and also Image Magick, and ffmpeg.
+This release depends on Linux epoll, zlib, and also Image Magick, and ffmpeg.
 
 The first server renders onto a 7680x2160 image area (top), and the second
-server renders onto the same size for the bottom. The individual half images are compressed with zlib and transferred to a front-end machine. The image sections decompressed there, combined, and downsampled to 3840x2160.
+server renders onto the same size for the bottom. The individual half images are compressed with zlib and transferred to a front-end machine. The image sections are decompressed there, combined, and downsampled to 3840x2160.
 
 ```console
 [                   ]
@@ -23,9 +23,9 @@ server renders onto the same size for the bottom. The individual half images are
 [                   ]
 ```
 
-The front end machine does some post processing of the image halfs, and then acknowledges the backend cluster so they can continue computing the next frame.
+The front end machine does some post processing of the image halfs, and then acknowledges the backend nodes so they can continue computing the next frame.
 
-If you are just rendering a still image The front end machine needs sufficient memory to combine the decompressed image halfs and convert to .png
+The backend nodes need to be set up for specific types of renders. If you are just rendering a still image the front end machine needs sufficient memory to combine the decompressed image halfs and convert to .png
 
 *Generating the point data*
 
@@ -63,7 +63,7 @@ You can specify the number of threads that each server will use (for example 8),
 
 Decide if you want to render a single image, or movie.
 For single images set environment variables DUR=1 and FPS=1
-For movies, try DUR=20.0 and FPS=60
+and for movies, try DUR=20.0 and FPS=60
 
 On the first server, run:
 
