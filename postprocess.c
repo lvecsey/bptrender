@@ -21,10 +21,19 @@ int postprocess(double *drgb, image_t *img) {
       
   {
     long int pixelno;
+
+    double factor;
+    
+    double v;
+
+    factor = 0.1;
+    
+    v = 0.25;
+    
     for (pixelno = 0; pixelno < num_pixels; pixelno++) {
-      img->rgb[pixelno].r = 65535.0 * (drgb[3*pixelno+0] / (1.5 * (istat.rmax - istat.ravg)));
-      img->rgb[pixelno].g = 65535.0 * (drgb[3*pixelno+1] / (1.5 * (istat.gmax - istat.gavg)));
-      img->rgb[pixelno].b = 65535.0 * (drgb[3*pixelno+2] / (1.5 * (istat.bmax - istat.bavg)));
+      img->rgb[pixelno].r = 65535.0 * (drgb[3*pixelno+0] / (factor * ((1.0 - v) * istat.ravg + v * istat.rmax)));
+      img->rgb[pixelno].g = 65535.0 * (drgb[3*pixelno+1] / (factor * ((1.0 - v) * istat.gavg + v * istat.gmax)));
+      img->rgb[pixelno].b = 65535.0 * (drgb[3*pixelno+2] / (factor * ((1.0 - v) * istat.bavg + v * istat.bmax)));
     }
   }
   
