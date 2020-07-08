@@ -34,6 +34,8 @@
 
 #include <sys/epoll.h>
 
+#include <sys/mman.h>
+
 #include "recvfile.h"
 #include "sendfile.h"
 
@@ -48,6 +50,8 @@
 #include "imgfill_pack.h"
 
 #include "postprocess.h"
+
+#include "lastframe.h"
 
 int imgfill_func(void *data, size_t len, void *extra) {
 
@@ -289,6 +293,59 @@ int main(int argc, char *argv[]) {
     long int results;
 
     long int frameno;
+
+    lastframe pre, post;
+    
+    char *env_PRELASTFRAME_FN;
+    char *env_POSTLASTFRAME_FN;
+
+    mode = S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH;
+
+    // -define quantum:format=floating-point
+
+    env_PRELASTFRAME_FN = getenv("PRELASTFRAME_FN");
+
+    pre.lastframe_fn = env_PRELASTFRAME_FN;
+    
+    if (pre.lastframe_fn != NULL) {
+    
+      pre.lastframe_fd = open(pre.lastframe_fn, O_RDWR | O_CREAT | O_TRUNC, mode);
+      if (pre.lastframe_fd == -1) {
+	perror("open");
+	return -1;
+      }
+      
+      pre.lastframe_fsize = sizeof(double) * input_xres * input_yres * 3;
+      retval = ftruncate(pre.lastframe_fd, pre.lastframe_fsize);
+      pre.lastframe_m = mmap(NULL, pre.lastframe_fsize, PROT_READ|PROT_WRITE, MAP_SHARED, pre.lastframe_fd, 0);
+      if (pre.lastframe_m == MAP_FAILED) {
+	perror("mmap");
+	return -1;
+      }
+
+    }
+
+    env_POSTLASTFRAME_FN = getenv("POSTLASTFRAME_FN");
+
+    post.lastframe_fn = env_POSTLASTFRAME_FN;
+    
+    if (post.lastframe_fn != NULL) {
+    
+      post.lastframe_fd = open(post.lastframe_fn, O_RDWR | O_CREAT | O_TRUNC, mode);
+      if (post.lastframe_fd == -1) {
+	perror("open");
+	return -1;
+      }
+      
+      post.lastframe_fsize = sizeof(pixel_t) * input_xres * input_yres;
+      retval = ftruncate(post.lastframe_fd, post.lastframe_fsize);
+      post.lastframe_m = mmap(NULL, post.lastframe_fsize, PROT_READ|PROT_WRITE, MAP_SHARED, post.lastframe_fd, 0);
+      if (post.lastframe_m == MAP_FAILED) {
+	perror("mmap");
+	return -1;
+      }
+
+    }
     
     epfd = epoll_create1(0);
     if (epfd == -1) {
@@ -477,6 +534,11 @@ int main(int argc, char *argv[]) {
 	    if (results == FCR_OUTPUT && image_splices[0] && image_splices[1]) {
 	      size_t len;
 
+	      if (pre.lastframe_fn != NULL && pre.lastframe_m != MAP_FAILED) {
+		fprintf(stderr, "%s: Writing preview of pre lastframe.\n", __FUNCTION__);
+		memcpy(pre.lastframe_m, reconstructed_drgb, pre.lastframe_fsize);
+	      }
+	      
 	      fprintf(stderr, "%s: Post processing combined frame.\n", __FUNCTION__);
 
 	      retval = postprocess(reconstructed_drgb, &output_img);
@@ -484,10 +546,15 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr, "%s: Trouble calling postprocess from drgb to rgb.\n", __FUNCTION__);
 		return -1;
 	      }
-	      
-	      fprintf(stderr, "%s: Writing combined frame.\n", __FUNCTION__);
 
-	      len = input_xres * input_yres * sizeof(pixel_t);
+	      if (post.lastframe_fn != NULL && post.lastframe_m != MAP_FAILED) {
+		fprintf(stderr, "%s: Writing preview of post lastframe.\n", __FUNCTION__);
+		memcpy(post.lastframe_m, output_img.rgb, post.lastframe_fsize);
+	      }
+
+	      fprintf(stderr, "%s: Writing combined frame.\n", __FUNCTION__);
+	      
+	      len = output_img.xres * output_img.yres * sizeof(pixel_t);
 	      
 	      bytes_written = writefile(1, output_img.rgb, len);
 	      if (bytes_written != len) {
@@ -551,6 +618,32 @@ int main(int argc, char *argv[]) {
     }
 
     free(output_img.rgb);
+
+    if (pre.lastframe_fn != NULL) {
+      if (pre.lastframe_fd != -1) {
+	if (pre.lastframe_m != MAP_FAILED) {
+	  munmap(pre.lastframe_m, pre.lastframe_fsize);
+	}
+	retval = close(pre.lastframe_fd);
+	if (retval == -1) {
+	  perror("close");
+	  return -1;
+	}
+      }
+    }
+
+    if (post.lastframe_fn != NULL) {
+      if (post.lastframe_fd != -1) {
+	if (post.lastframe_m != MAP_FAILED) {
+	  munmap(post.lastframe_m, post.lastframe_fsize);
+	}
+	retval = close(post.lastframe_fd);
+	if (retval == -1) {
+	  perror("close");
+	  return -1;
+	}
+      }
+    }
     
   }
 

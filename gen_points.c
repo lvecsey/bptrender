@@ -51,13 +51,21 @@ int main(int argc, char *argv[]) {
 
   double radians;
 
+  double radius;
+  
+  double freq;
+  
   pixel_t white = { 65535, 65535, 65535 };
 
   pointcol pc;
 
   off_t offset;
+
+  char *dat_fn;
+
+  dat_fn = "/tmp/pointcols.dat";
   
-  filename = argc>1 ? argv[1] : "/tmp/pointcols.dat";
+  filename = argc>1 ? argv[1] : dat_fn;
   
   fd = open(filename, O_RDWR | O_CREAT | O_TRUNC, mode);
   if (fd == -1) {
@@ -76,12 +84,16 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
+  freq = 27.50;
+
+  radius = 0.9875;
+  
   for (pointno = 0; pointno < num_pointcols; pointno++) {
 
-    radians = 2.0 * M_PI * pointno / (num_pointcols - 1);
+    radians = 2.0 * M_PI * freq * pointno / (num_pointcols - 1);
     
     pc = (pointcol) {
-      .pnta = { -1.0 + 2.0 * pointno / (num_pointcols - 1), .y = cos(radians), .z = 0.0 },
+      .pnta = { -1.0 + 2.0 * pointno / (num_pointcols - 1), .y = radius * cos(radians), .z = radius * sin(radians) },
       .color = white
     };
 

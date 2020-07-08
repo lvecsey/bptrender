@@ -32,10 +32,14 @@ typedef struct {
   long int xres, yres;
   
   double *drgb;
+
+  uint64_t *perpixelcounts;
   
   long int region;
   
   long int ypos_start, ypos_end;
+
+  long int num_frames;
   
   pointcol *pc;
 

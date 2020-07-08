@@ -40,6 +40,54 @@
 
 #include "region.h"
 
+int project_point(double *drgb, uint64_t *perpixelcounts, long int xres, long int yres, long int region, point3d_t *pntc, double depth, double aspect, pixel_t fill_color, long int *num_pixelupdate) {
+  
+  point_t pt;
+
+  long int xpos, ypos;
+
+  long int num_splits;
+  
+  num_splits = 2;
+  
+  pt.x = pntc->x / (pntc->z + depth);
+  pt.y = pntc->y / (pntc->z + depth);    
+
+  pt.x /= aspect;
+  pt.y *= -1.0;
+    
+  xpos = pt.x * (xres >> 1); xpos += xres >> 1;
+  ypos = pt.y * ( (num_splits * yres) >> 1); ypos += (num_splits * yres) >> 1;    
+
+  if (xpos < 0 || xpos >= xres) {
+    return 0;
+  }
+
+  switch(region) {
+  case RTOP:
+    if (ypos >= ((num_splits * yres) >> 1)) {
+      return 0;
+    }
+    break;
+  case RBOTTOM:
+    if (ypos < ((num_splits * yres) >> 1)) {
+      return 0;
+    }
+    ypos -= ((num_splits * yres) >> 1);
+    break;
+  }
+    
+  if (ypos >= 0 && ypos < yres) {
+    drgb[ypos * xres * 3 + xpos * 3 + 0] += fill_color.r / 65535.0;
+    drgb[ypos * xres * 3 + xpos * 3 + 1] += fill_color.g / 65535.0;
+    drgb[ypos * xres * 3 + xpos * 3 + 2] += fill_color.b / 65535.0;
+    num_pixelupdate[0]++;
+  }
+
+  return 0;
+
+}
+
 void *render(void *extra) {
 
   void *ret;
@@ -53,6 +101,8 @@ void *render(void *extra) {
   point3d_t *pcp;
   
   point3d_t pntc;
+
+  point3d_t pntd;
   
   double *matrix;
 
@@ -66,9 +116,6 @@ void *render(void *extra) {
 
   double rho;
 
-  point_t pt;
-  long int xpos, ypos;
-
   double depth;
 
   double aspect;
@@ -77,15 +124,21 @@ void *render(void *extra) {
 
   double vf;
   
-  long int num_splits;
-
   long int num_pixelupdate;
+
+  long int range;
+
+  double vol;
+  
+  double radius;
+
+  pixel_t red = { .r = 65535, .g = 0, .b = 0 };
+
+  pixel_t blue = { .r = 0, .g = 0, .b = 65535 };
   
   rw = (render_work*) extra;
   
   ret = NULL;
-
-  num_splits = 2;
   
   rho = 1.0;
 
@@ -102,56 +155,37 @@ void *render(void *extra) {
   for (pointno = 0; pointno < rw->num_pointcols; pointno++) {
 
     vp = pointno; vp /= (rw->num_pointcols - 1);
+
+    range = (rw->num_samples / rw->num_frames);
     
-    sampleno = (pointno * rw->num_samples) / rw->num_pointcols;
+    sampleno = vf * (rw->num_samples - range) + vp * range;
 
     aud_pt = (point_t) { .x = rw->audio_samples[sampleno].left, .y = rw->audio_samples[sampleno].right };
+    
+    stereographic(aud_pt, 0.0, 0.0, 1.0, &phi, &theta);
 
-    stereographic(aud_pt, M_PI, 0.0, 1.0, &phi, &theta);
+    phi *= 2.0;
+    theta *= 2.0;
+    
+    vol = 0.5 * (fabs(aud_pt.x) + fabs(aud_pt.y));
 
     pnta = (point3d_t) { .x = cos(phi) * cos(theta) * 1.0, .y = cos(phi) * sin(theta) * rho, .z = sin(phi) };
 
+    pntc.x = (pnta.x) * matrix[0] + (pnta.y) * matrix[1] + (pnta.z) * matrix[2] + 1.0 * matrix[3];
+    pntc.y = (pnta.x) * matrix[4] + (pnta.y) * matrix[5] + (pnta.z) * matrix[6] + 1.0 * matrix[7]; 
+    pntc.z = (pnta.x) * matrix[8] + (pnta.y) * matrix[9] + (pnta.z) * matrix[10] + 1.0 * matrix[11];  
+
+    project_point(rw->drgb, rw->perpixelcounts, rw->xres, rw->yres, rw->region, &pntc, depth, aspect, red, &num_pixelupdate);
+    
     pcp = &(rw->pc[pointno].pnta);
+
+    pntb = (point3d_t) { .x = (1.0 - vp) * pnta.x + vp * pcp->x, .y = (1.0 - vp) * pnta.y + vp * pcp->y, .z = (1.0 - vp) * pnta.z + vp * pcp->z };
     
-    pntb = (point3d_t) { .x = (1.0 - vf) * pnta.x + vf * pcp->x, .y = (1.0 - vf) * pnta.y + vf * pcp->y, .z = (1.0 - vf) * pnta.z + vf * pcp->z };
+    pntd.x = (pntb.x) * matrix[0] + (pntb.y) * matrix[1] + (pntb.z) * matrix[2] + 1.0 * matrix[3];
+    pntd.y = (pntb.x) * matrix[4] + (pntb.y) * matrix[5] + (pntb.z) * matrix[6] + 1.0 * matrix[7]; 
+    pntd.z = (pntb.x) * matrix[8] + (pntb.y) * matrix[9] + (pntb.z) * matrix[10] + 1.0 * matrix[11];  
 
-    pntc.x = (pntb.x) * matrix[0] + (pntb.y) * matrix[1] + (pntb.z) * matrix[2] + 1.0 * matrix[3];
-    pntc.y = (pntb.x) * matrix[4] + (pntb.y) * matrix[5] + (pntb.z) * matrix[6] + 1.0 * matrix[7]; 
-    pntc.z = (pntb.x) * matrix[8] + (pntb.y) * matrix[9] + (pntb.z) * matrix[10] + 1.0 * matrix[11];  
-
-    pt.x = pntc.x / (pntc.z + depth);
-    pt.y = pntc.y / (pntc.z + depth);    
-
-    pt.x /= aspect;
-    pt.y *= -1.0;
-    
-    xpos = pt.x * (rw->xres >> 1); xpos += rw->xres >> 1;
-    ypos = pt.y * ( (num_splits * rw->yres) >> 1); ypos += (num_splits * rw->yres) >> 1;    
-
-    if (xpos < 0 || xpos >= rw->xres) {
-      continue;
-    }
-
-    switch(rw->region) {
-    case RTOP:
-      if (ypos >= ((num_splits * rw->yres) >> 1)) {
-	continue;
-      }
-      break;
-    case RBOTTOM:
-      if (ypos < ((num_splits * rw->yres) >> 1)) {
-	continue;
-      }
-      ypos -= ((num_splits * rw->yres) >> 1);
-      break;
-    }
-    
-    if (ypos >= 0 && ypos < rw->yres) {
-      rw->drgb[ypos * rw->xres * 3 + xpos * 3 + 0] += rw->pc[pointno].color.r;
-      rw->drgb[ypos * rw->xres * 3 + xpos * 3 + 1] += rw->pc[pointno].color.g;
-      rw->drgb[ypos * rw->xres * 3 + xpos * 3 + 2] += rw->pc[pointno].color.b;
-      num_pixelupdate++;
-    }
+    project_point(rw->drgb, rw->perpixelcounts, rw->xres, rw->yres, rw->region, &pntd, depth, aspect, rw->pc[pointno].color, &num_pixelupdate);
     
   }
 

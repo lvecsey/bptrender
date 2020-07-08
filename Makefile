@@ -22,6 +22,12 @@ $(TMPDIR)/test_remoterender-top.png : REMOTE_PORT=5295
 $(TMPDIR)/test_remoterender-top.png : fetch_imghalf
 	@tcpclient -vRHl0 $(REMOTE_IP) $(REMOTE_PORT) ./fetch_imghalf - | convert -size 7680x2160 rgb:- -depth 32 $@
 
+$(TMPDIR)/output_prelastframe.png : $(TMPDIR)/output_prelastframe-7680x4320.rgb
+	@convert -size 7680x4320 -depth 64 -define quantum:format=floating-point $^ -resize 3840x2160 $@
+
+$(TMPDIR)/output_postlastframe.png : $(TMPDIR)/output_postlastframe-7680x4320.rgb
+	@convert -size 7680x4320 $^ -resize 3840x2160 -depth 32 $@
+
 $(TMPDIR)/output_bptrender.png : RENDER_RES=7680x4320
 
 $(TMPDIR)/output_bptrender.png : OUTPUT_RES=3840x2160
@@ -34,7 +40,7 @@ $(TMPDIR)/output_bptrender.png : $(TMPDIR)/renderfarm_image-7680x2160-top.rgb $(
 /tmp/output_bptrender-fromrgbfiles.mp4 : FPS=60
 
 /tmp/output_bptrender-fromrgbfiles.mp4 : combine_rgbs
-	@./$^ $(TMPDIR)/renderfarm_movie-7680x2160-top.rgb $(TMPDIR)/renderfarm_movie-7680x2160-bottom.rgb | ffmpeg -f rawvideo -pix_fmt rgb48le -r $(FPS) -s $(RENDER_RES) -i - -preset veryslow -vcodec libx264 -filter:v "scale=3840x2160" -y $@
+	@./$^ $(TMPDIR)/renderfarm_movie-7680x2160-top.rgb $(TMPDIR)/renderfarm_movie-7680x2160-bottom.rgb | ffmpeg -f rawvideo -pix_fmt rgb48le -r $(FPS) -s $(RENDER_RES) -i - -aspect 16:9 -preset veryslow -vcodec libx264 -filter:v "scale=3840x2160" -y $@
 
 gen_points : LIBS+=-lm
 

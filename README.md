@@ -23,7 +23,7 @@ server renders onto the same size for the bottom. The individual half images are
 [                   ]
 ```
 
-The front end machine does some post processing of the image halfs, and then acknowledges the backend nodes so they can continue computing the next frame.
+The front end machine is able to do post processing of the image halfs, and then acknowledges the backend nodes so they can continue computing the next frame.
 
 The backend nodes need to be set up for specific types of renders. If you are just rendering a still image the front end machine needs sufficient memory to combine the decompressed image halfs and convert to .png
 
@@ -121,3 +121,11 @@ There is also a combine_rgbs client binary which will take streams of .rgb data 
 ![Image of output](https://phrasep.com/~lvecsey/software/bptrender/output_bptrender.png)
 
 [Sample movie](https://phrasep.com/~lvecsey/software/bptrender/output_bptrender.mp4)
+
+You can also set environment variables for multitcp of PRELASTFRAME_FN
+and POSTLASTFRAME_FN which are .rgb files, the first being a depth 64
+floating point file representing the reconstructed raw image out of the backend nodes. The post .rgb filename is a post processed file with intensity levels potentially being adjusted and as a depth 16, uint16_t file. 
+
+These are updated each frame so if you have a long running render you can view
+these files to see how the rendering is going.
+
