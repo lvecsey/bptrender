@@ -120,4 +120,4 @@ There is also a combine_rgbs client binary which will take streams of .rgb data 
 
 ![Image of output](https://phrasep.com/~lvecsey/software/bptrender/output_bptrender.png)
 
-[Sample movie](https://phrasep.com/~lvecsey/software/output_bptrender.mp4)
+[Sample movie](https://phrasep.com/~lvecsey/software/bptrender/output_bptrender.mp4)
