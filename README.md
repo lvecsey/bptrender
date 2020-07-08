@@ -34,7 +34,7 @@ First, generate the point and color data which will be copied to each server.
 ```console
 make gen_points
 time ./gen_points /tmp/pointcols.dat 1.5e9
-```console
+```
 
 For 1.5 billion points, this can sometimes take 25 minutes. It's basically a
 48GB file.
