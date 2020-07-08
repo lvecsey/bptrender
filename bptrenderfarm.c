@@ -82,12 +82,8 @@ int main(int argc, char *argv[]) {
 
   long int input_xres, input_yres;
 
-  double duration;
-
-  double fps;
+  params par;
   
-  long int num_threads;
-
   pthread_t *threads;
 
   double *drgb;
@@ -99,7 +95,6 @@ int main(int argc, char *argv[]) {
   long int num_pointcols;
 
   long int num_pixels;
-  size_t img_sz;
 
   void *compressed_drgb;
 
@@ -129,10 +124,6 @@ int main(int argc, char *argv[]) {
 
   framestatus fs;
   
-  ssize_t bytes_read;
-
-  params par;
-
   struct timespec start, now;
 
   char *rstr;
@@ -159,7 +150,10 @@ int main(int argc, char *argv[]) {
 
   retval = argc>1 ? sscanf(argv[1],"%ldx%ld",&input_xres,&input_yres) : -1;
 
-  num_threads = argc>2 ? strtol(argv[2],NULL,10) : def_numthreads;
+  par.xres = input_xres;
+  par.yres = input_yres;
+  
+  par.num_threads = argc>2 ? strtol(argv[2],NULL,10) : def_numthreads;
   
   region = RNONE;
 
@@ -174,17 +168,17 @@ int main(int argc, char *argv[]) {
 
   rstr = regstr(region);
   
-  duration = argc>4 ? strtod(argv[4],NULL) : 20.0;
+  par.duration = argc>4 ? strtod(argv[4],NULL) : 20.0;
 
-  fps = argc>5 ? strtod(argv[5],NULL) : 60;
+  par.fps = argc>5 ? strtod(argv[5],NULL) : 60;
   
-  threads = malloc(num_threads * sizeof(pthread_t));
+  threads = malloc(par.num_threads * sizeof(pthread_t));
   if (threads == NULL) {
     perror("malloc");
     return -1;
   }
 
-  rws = calloc(num_threads, sizeof(render_work));
+  rws = calloc(par.num_threads, sizeof(render_work));
   if (rws == NULL) {
     perror("calloc");
     return -1;
@@ -205,8 +199,10 @@ int main(int argc, char *argv[]) {
     perror("malloc");
     return -1;
   }
+
+  dat_fn = "/tmp/pointcols.dat";
   
-  fd = open("/tmp/pointcols.dat", O_RDWR);
+  fd = open(dat_fn, O_RDWR);
   if (fd == -1) {
     perror("open");
     return -1;
@@ -260,7 +256,7 @@ int main(int argc, char *argv[]) {
 
   fprintf(stderr, "%s: (Region %s) num_samples %ld\n", __FUNCTION__, rstr, num_samples);
   
-  fs = (framestatus) { .num_frames = duration * fps };
+  fs = (framestatus) { .num_frames = par.duration * par.fps };
 
   freq = 3.0;
   
@@ -278,7 +274,7 @@ int main(int argc, char *argv[]) {
       drgb[3*pixelno+2] = 0.0;      
     }
     
-    if (fs.num_frames == 1 && fps <= 1.0) {
+    if (fs.num_frames == 1 && par.fps <= 1.0) {
       vf = 0.35;
     }
     else {
@@ -305,14 +301,14 @@ int main(int argc, char *argv[]) {
 
     }
     
-    for (threadno = 0; threadno < num_threads; threadno++) {
+    for (threadno = 0; threadno < par.num_threads; threadno++) {
 
       rws[threadno].xres = input_xres;
       rws[threadno].yres = (input_yres >> 1);
       rws[threadno].drgb = drgb;      
       rws[threadno].region = region;
-      rws[threadno].ypos_start = threadno * (input_yres >> 1) / num_threads;
-      rws[threadno].ypos_end = (threadno + 1) * (input_yres >> 1) / num_threads;
+      rws[threadno].ypos_start = threadno * (input_yres >> 1) / par.num_threads;
+      rws[threadno].ypos_end = (threadno + 1) * (input_yres >> 1) / par.num_threads;
       rws[threadno].pc = pc;
       rws[threadno].num_pointcols = num_pointcols;
       rws[threadno].audio_samples = audio_samples;
@@ -322,7 +318,7 @@ int main(int argc, char *argv[]) {
       
     }
 
-    for (threadno = 0; threadno < num_threads - 1; threadno++) {
+    for (threadno = 0; threadno < par.num_threads - 1; threadno++) {
     
       retval = pthread_create(threads+threadno, NULL, render, rws + threadno);
       if (retval != 0) {
@@ -333,9 +329,9 @@ int main(int argc, char *argv[]) {
 
     }
 
-    render(rws + (num_threads - 1));
+    render(rws + (par.num_threads - 1));
     
-    for (threadno = 0; threadno < num_threads - 1; threadno++) {
+    for (threadno = 0; threadno < par.num_threads - 1; threadno++) {
       retval = pthread_join(threads[threadno], NULL);
       if (retval != 0) {
 	fprintf(stderr, "%s: Trouble joining thread, errno %d\n", __FUNCTION__, errno);
@@ -386,16 +382,12 @@ int main(int argc, char *argv[]) {
 
       uint64_t len;
 
-      long int num_iters;
-      
       out_fd = 1;
 
       len = htobe64(compressed_len);
 
       fprintf(stderr, "%s: (Region %s) Sending file header.\n", __FUNCTION__, rstr);
 
-      num_iters = 0;
-      
       bytes_written = sendfile(out_fd, &len, sizeof(uint64_t));
       if (bytes_written != sizeof(uint64_t)) {
 	perror("write");
@@ -404,8 +396,6 @@ int main(int argc, char *argv[]) {
 
       fprintf(stderr, "%s: (Region %s) Sending file data.\n", __FUNCTION__, rstr);
 
-      num_iters = 0;
-      
       bytes_written = sendfile(out_fd, compressed_drgb, compressed_len);
       if (bytes_written != compressed_len) {
 	fprintf(stderr, "%s: (Region %s) Mismatch, bytes_written %ld\n", __FUNCTION__, rstr, bytes_written);
