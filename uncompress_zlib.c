@@ -14,8 +14,6 @@ int uncompress_zlib(void *src_buf, size_t src_len, void *dst_buf, size_t dst_len
     int ret;
     unsigned have;
     z_stream strm;
-    unsigned char in[CHUNK];
-    unsigned char out[CHUNK];
 
     size_t amt;
 
